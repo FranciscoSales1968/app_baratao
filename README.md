@@ -3,7 +3,7 @@
 Sistema para Oficina O Baratão - Fortaleza - Ceará
 suporte: stisampaio@gmail.com
 
-# Para que o sistema funcione instale as bibliotecas e vejs os requisitos.
+# Para que o sistema funcione instale as bibliotecas e veja os requisitos.
 Ambiente python, ide pycharm, ambiente linux ubuntu, github, copilot, etc.
 
 # Módulo CRUD ESTOQUE
