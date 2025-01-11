@@ -1,0 +1,100 @@
+import pandas as pd
+from faker import Faker
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+from datetime import datetime
+
+# Configuração do Faker
+fake = Faker()
+
+# Configuração do SQLAlchemy
+Base = declarative_base()
+engine = create_engine('sqlite:///estoque.db')
+Session = sessionmaker(bind=engine)
+session = Session()
+
+# Definição da tabela de produtos
+class Produto(Base):
+    __tablename__ = 'produtos'
+    id = Column(Integer, primary_key=True)
+    nome = Column(String)
+    quantidade = Column(Integer)
+    preco = Column(Float)
+    data_entrada = Column(DateTime, default=datetime.utcnow)
+
+Base.metadata.create_all(engine)
+
+# Função para criar um produto
+def criar_produto(nome, quantidade, preco):
+    produto = Produto(nome=nome, quantidade=quantidade, preco=preco)
+    session.add(produto)
+    session.commit()
+
+# Função para ler produtos
+def ler_produtos():
+    return session.query(Produto).all()
+
+# Função para atualizar um produto
+def atualizar_produto(produto_id, nome=None, quantidade=None, preco=None):
+    produto = session.query(Produto).filter_by(id=produto_id).first()
+    if produto:
+        if nome:
+            produto.nome = nome
+        if quantidade:
+            produto.quantidade = quantidade
+        if preco:
+            produto.preco = preco
+        session.commit()
+
+# Função para deletar um produto
+def deletar_produto(produto_id):
+    produto = session.query(Produto).filter_by(id=produto_id).first()
+    if produto:
+        session.delete(produto)
+        session.commit()
+
+# Função para gerar dados fictícios
+def gerar_dados_ficticios(n):
+    for _ in range(n):
+        criar_produto(nome=fake.word(), quantidade=fake.random_int(min=1, max=100), preco=fake.random_number(digits=2))
+
+# Função para gerar relatório de curva ABC
+def gerar_relatorio_curva_abc():
+    produtos = session.query(Produto).all()
+    df = pd.DataFrame([(p.nome, p.quantidade * p.preco) for p in produtos], columns=['Nome', 'Valor'])
+    df = df.sort_values(by='Valor', ascending=False)
+    df['Cumulativo'] = df['Valor'].cumsum()
+    df['Percentual'] = df['Cumulativo'] / df['Valor'].sum()
+    df['Classificacao'] = pd.cut(df['Percentual'], bins=[0, 0.8, 0.95, 1], labels=['A', 'B', 'C'])
+    return df
+
+# Função para gerar relatório geral por data
+def gerar_relatorio_geral(ordem='crescente'):
+    produtos = session.query(Produto).order_by(Produto.data_entrada.asc() if ordem == 'crescente' else Produto.data_entrada.desc()).all()
+    df = pd.DataFrame([(p.nome, p.quantidade, p.preco, p.data_entrada) for p in produtos], columns=['Nome', 'Quantidade', 'Preco', 'Data Entrada'])
+    return df
+
+# Exemplo de uso
+if __name__ == "__main__":
+    # Gerar dados fictícios
+    gerar_dados_ficticios(100)
+
+    # Ler produtos
+    produtos = ler_produtos()
+    for produto in produtos:
+        print(f"{produto.nome}: {produto.quantidade} unidades, R${produto.preco}, Data de entrada: {produto.data_entrada}")
+
+    # Atualizar um produto
+    atualizar_produto(1, quantidade=50)
+
+    # Deletar um produto
+    deletar_produto(2)
+
+    # Gerar relatório de curva ABC
+    relatorio_abc = gerar_relatorio_curva_abc()
+    print(relatorio_abc)
+
+    # Gerar relatório geral por data
+    relatorio_geral = gerar_relatorio_geral('crescente')
+    print(relatorio_geral)
